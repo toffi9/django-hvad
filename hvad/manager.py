@@ -179,11 +179,12 @@ class TranslationQueryset(QuerySet):
     # Helpers and properties (INTERNAL!)
     #===========================================================================
 
-    def _clone(self, klass=None, setup=False, **kwargs):
+    def _clone(self):
         """ Creates a clone of this queryset - Django equivalent of copy()
         This method keeps all defining attributes and drops data caches
         """
-        kwargs.update({
+        obj = super(TranslationQueryset, self)._clone()
+        kwargs = {
             'shared_model': self.shared_model,
             '_local_field_names': self._local_field_names,
             '_field_translator': self._field_translator,
@@ -192,13 +193,9 @@ class TranslationQueryset(QuerySet):
             '_raw_select_related': self._raw_select_related,
             '_language_filter_tag': getattr(self, '_language_filter_tag', False),
             '_hvad_switch_fields': self._hvad_switch_fields,
-        })
-        if django.VERSION < (1, 9):
-            kwargs.update({
-                'klass': None if klass is None else self._get_class(klass),
-                'setup': setup,
-            })
-        return super(TranslationQueryset, self)._clone(**kwargs)
+        }
+        obj.__dict__.update(kwargs)
+        return obj
 
     @property
     def field_translator(self):
@@ -316,7 +313,7 @@ class TranslationQueryset(QuerySet):
                                      'Use prefetch_related instead.' % query_key)
                 if term.target is None:
                     raise FieldError('Cannot select_related: %s is a regular field' % query_key)
-                if hasattr(term.field.rel, 'through'):
+                if hasattr(term.field.remote_field, 'through'):
                     raise FieldError('Cannot select_related: %s can be multiple objects. '
                                      'Use prefetch_related instead.' % query_key)
 
@@ -863,13 +860,13 @@ class TranslationAwareQueryset(QuerySet):
     def only(self, *fields):
         raise NotImplementedError()
 
-    def _clone(self, klass=None, setup=False, **kwargs):
+    def _clone(self, **kwargs):
         kwargs.update({
             '_language_code': self._language_code,
         })
-        if django.VERSION < (1, 9):
-            kwargs.update({'klass': klass, 'setup': setup})
-        return super(TranslationAwareQueryset, self)._clone(**kwargs)
+        obj = super(TranslationAwareQueryset, self)._clone()
+        obj.__dict__.update(kwargs)
+        return obj
 
     def _filter_extra(self, extra_filters):
         if extra_filters.children:
